@@ -1356,6 +1356,45 @@ const LABEL_XY = {"26":[371.3,720.1],"41":[94.4,844.0],"43":[131.6,883.7],"37":[
     window.scrollTo(0, 0);
   }
 
+  // ================= こうかおん（おんせい ファイル は つかわず ブラウザ で つくる）=================
+  let audioCtx = null;
+  // スマホ は さいしょ に がめん を さわった とき で ないと おと が でない ので、そこで じゅんび する
+  function unlockAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch (e) { /* おと が だせなくても つづける */ }
+  }
+  document.addEventListener("pointerdown", unlockAudio);
+  document.addEventListener("keydown", unlockAudio);
+
+  function tone(freq, start, dur, type = "sine", vol = 0.35) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(vol, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(start);
+    osc.stop(start + dur + 0.05);
+  }
+  // せいかい の「ピンポン」（たかい おと → ひくい おと）
+  function playPinpon() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    tone(1319, t, 0.35);        // ピン（ミ）
+    tone(1047, t + 0.18, 0.6);  // ポン（ド）
+  }
+  // まちがい の「ブブー」（ひくい ブザー の おと）
+  function playBubu() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    tone(150, t, 0.16, "square", 0.12);        // ブ
+    tone(150, t + 0.22, 0.6, "square", 0.12);  // ブー
+  }
+
   // ================= クイズ =================
   const quizMap = createMap($("quizMap"));
   let questions = [];
@@ -1426,6 +1465,7 @@ const LABEL_XY = {"26":[371.3,720.1],"41":[94.4,844.0],"43":[131.6,883.7],"37":[
         else if (i === pick) b.classList.add("wrong");
       });
     }
+    if (q.correct) playPinpon(); else playBubu();
     addRecord();
     updateMastery(q.pref, q.correct);
     updateWrong(q.spec, q.correct);
